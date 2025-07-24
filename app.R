@@ -13,6 +13,8 @@ library(shinyWidgets)
 
 gs4_deauth()  # Disable authentication (since the sheet is public)
 data <- read_sheet("https://docs.google.com/spreadsheets/d/1j7pNVYhwCbqlTP2Qnl4FqjjYPKh-KiHTOy_gjPxwAHA/edit?usp=sharing")
+indec <- read_sheet("https://docs.google.com/spreadsheets/d/1dz3WGgw3Sr6dZkFD43DFacWDXsCr2W5Dec76c5GzZpU/edit?usp=sharing")
+data <- left_join(data, indec, by = "periodo")
 min_date <- min(data$periodo)
 max_date <- max(data$periodo)
 distritos <- levels(factor(data$Distrito))
@@ -48,7 +50,8 @@ ui <- page_sidebar(
                        label = 'Métricas opcionales:',
                        choices = c('Almacén' = 'almacen',
                                    'Verdulería' = 'verduleria',
-                                   'Carnicería' = 'carniceria'),
+                                   'Carnicería' = 'carniceria',
+                                   "Comparar con índice nacional del INDEC" = "cba_indec"),
                        selected = NULL),
     
     downloadBttn(outputId = 'descarga',
@@ -97,10 +100,13 @@ server <- function(input, output, session) {
         var_almacen = as.numeric(sapply(var_almacen, function(x) ifelse(is.null(x), NA, x))),
         var_verduleria = as.numeric(sapply(var_verduleria, function(x) ifelse(is.null(x), NA, x))),
         var_carniceria = as.numeric(sapply(var_carniceria, function(x) ifelse(is.null(x), NA, x))),
+        var_cba_indec = as.numeric(sapply(var_cba_indec, function(x) ifelse(is.null(x), NA, x))),
         
         almacen = as.numeric(sapply(almacen, function(x) ifelse(is.null(x), NA, x))),
         verduleria = as.numeric(sapply(verduleria, function(x) ifelse(is.null(x), NA, x))),
-        carniceria = as.numeric(sapply(carniceria, function(x) ifelse(is.null(x), NA, x)))
+        carniceria = as.numeric(sapply(carniceria, function(x) ifelse(is.null(x), NA, x))),
+        cba_indec = as.numeric(sapply(cba_indec, function(x) ifelse(is.null(x), NA, x))),
+        
         # Ensure CBA is numeric# Convert list to numeric safely
       ) %>%
       drop_na(IBP)  # Remove NA values  
@@ -151,7 +157,9 @@ server <- function(input, output, session) {
       str_replace_all("^carniceria$", "Carnicería ($)") %>%
       str_replace_all("var_almacen", "Almacén (%)") %>%
       str_replace_all("var_verduleria", "Verdulería (%)") %>%
-      str_replace_all("var_carniceria", "Carnicería (%)")
+      str_replace_all("var_carniceria", "Carnicería (%)") %>%
+      str_replace_all("var_cba_indec", "CBA INDEC (%)") %>%
+      str_replace_all("^cba_indec$", "CBA INDEC ($)")
     
     # ---- Detect column types for formatting ----
     cols_currency <- grep("\\(\\$\\)", colnames(df), value = TRUE)
@@ -198,7 +206,8 @@ server <- function(input, output, session) {
                           IBP = "IBP",
                           var_almacen = "Almacén (%)",
                           var_verduleria = "Verdulería (%)",
-                          var_carniceria = "Carnicería (%)"
+                          var_carniceria = "Carnicería (%)",
+                          var_cba_indec = "CBA INDEC (%)"
         )
       )
     
@@ -207,7 +216,8 @@ server <- function(input, output, session) {
       "IBP" = "red",
       "Almacén (%)" = "#00FFFF",
       "Verdulería (%)" = "#7CFC00",
-      "Carnicería (%)" = "#CD7F32"
+      "Carnicería (%)" = "#CD7F32",
+      "CBA INDEC (%)" = "blue"
     )
     
     ggplot(data = plot_data, aes(x = periodo, y = valor * 100, color = variable)) +
@@ -265,7 +275,8 @@ server <- function(input, output, session) {
                                  CBA = "CBA",
                                  almacen = "Almacén (ARS)",
                                  verduleria = "Verdulería (ARS)",
-                                 carniceria = "Carnicería (ARS)")
+                                 carniceria = "Carnicería (ARS)",
+                                 cba_indec = "CBA INDEC (ARS)")
     
     # Plot
     ggplot(data = plot_data, aes(x = periodo, y = valor, color = variable)) +
@@ -285,7 +296,8 @@ server <- function(input, output, session) {
           "CBA" = "red",
           "Almacén (ARS)" = "#00FFFF",
           "Verdulería (ARS)" = "#7CFC00",
-          "Carnicería (ARS)" = "#CD7F32"
+          "Carnicería (ARS)" = "#CD7F32",
+          "CBA INDEC (ARS)" = "blue"
         )
       ) +
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
