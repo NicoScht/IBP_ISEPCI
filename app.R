@@ -175,7 +175,7 @@ server <- function(input, output, session) {
       datatable_object <- datatable_object %>%
         DT::formatStyle(
           columns = "IBP (%)",
-          color = DT::styleInterval(0, c("red", "green")),
+          color = DT::styleInterval(0, c("green", "red")),
           fontWeight = 'bold'
         )
     }
@@ -358,8 +358,10 @@ shinyApp(ui = ui, server = server)
 # Tengo un plot, y tengo una primera tabla
 
 #Pasos a seguir
+# Revisar botones tabla. Ordenan mal (fecha), o tiran error (CBA)
 # 1: Cambiar la tabla por una que me permita ver todos los meses
 # 2: Permitir métricas opcionales (En tabla y gráfico)
+# Permitir elegir entre Excel o CSV o PDF
 # 4: Añadir comparación con otra provincia
 # 5: Añadir mapa
 
