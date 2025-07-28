@@ -26,18 +26,8 @@ ui <- page_sidebar(
   theme = bs_theme(preset = "pulse"),
   sidebar = sidebar(
     
-    airDatepickerInput(
-      inputId = "periodo_seleccionado",
-      value = c(min_date, max_date),
-      label = "Seleccionar período:",
-      range = TRUE,  # Enable date range selection
-      minDate = min_date, 
-      maxDate = max_date,
-      view = "months",  # Only show months
-      minView = "months",  # Restrict selection to months
-      dateFormat = "MM yyyy",  # Display format
-      language = "es"
-    ),
+    uiOutput("selector_fechas")
+    ,
     
     
     selectInput(inputId = "distrito_seleccionado",
@@ -64,25 +54,49 @@ ui <- page_sidebar(
   
   navset_card_underline(
     nav_panel("Variaciones", plotOutput(outputId = 'grafico_1',
-               hover = "hover_1"), 
+                                        hover = "hover_1"), 
               verbatimTextOutput("grafico_info")),
     
     nav_panel("Canastas", plotOutput('grafico_2', hover = 'hover_2'),
               verbatimTextOutput("grafico_info_2")
-  )),
+    )),
   
   
   card(
     h5(textOutput("titulo_tabla_1")),
     DT::DTOutput(outputId = 'tabla_1')
   )
- 
+  
 )
 
 
 # Define server ----------------------------------------------------------------
 
 server <- function(input, output, session) {
+  
+  output$selector_fechas <- renderUI({
+    req(input$distrito_seleccionado)
+    
+    fechas_distrito <- data %>%
+      filter(Distrito == input$distrito_seleccionado) %>%
+      pull(periodo) %>%
+      as.Date()  # Convertir a Date
+    
+    airDatepickerInput(
+      inputId = "periodo_seleccionado",
+      label = NULL,
+      range = TRUE,
+      minDate = min(fechas_distrito),
+      maxDate = max(fechas_distrito),
+      value = c(min(fechas_distrito), max(fechas_distrito)),
+      separator = " al ",
+      autoClose = TRUE,
+      dateFormat = "MM-yyyy",
+      view = "months",
+      minView = "months",
+      language = "es"
+    )
+  })
   
   dato_filtrado <- reactive({
     req(input$periodo_seleccionado)
@@ -92,7 +106,7 @@ server <- function(input, output, session) {
       filter(
         periodo >= (input$periodo_seleccionado[1]) &
           periodo <= (input$periodo_seleccionado[2]),
-                    Distrito == input$distrito_seleccionado) %>%
+        Distrito == input$distrito_seleccionado) %>%
       
       mutate(
         periodo = format(ymd(periodo), "%m-%Y"),  # Format 'periodo' as "M-YYYY"
@@ -127,7 +141,7 @@ server <- function(input, output, session) {
     
     base %>% select(all_of(columnas_basicas))
   })
-    
+  
   
   output$titulo_tabla_1 <- renderText({
     req(input$periodo_seleccionado, input$distrito_seleccionado)  # Ensure inputs exist
@@ -139,9 +153,10 @@ server <- function(input, output, session) {
     )
   })
   
- 
+  
   output$tabla_1 <- DT::renderDataTable({
     df <- dato_filtrado()
+    
     
     if (nrow(df) == 0) {
       return(DT::datatable(data.frame(Mensaje = "No hay datos para mostrar."),
@@ -183,7 +198,7 @@ server <- function(input, output, session) {
     return(datatable_object)
   })
   
-     
+  
   
   output$grafico_1 <- renderPlot({
     filtered_data <- dato_filtrado() %>%
@@ -240,14 +255,14 @@ server <- function(input, output, session) {
   })
   
   output$grafico_info <- renderText({
-      # Ensure there is hover data
+    # Ensure there is hover data
     
     periodo_hover <- as.Date(input$hover_1$x, origin = "1970-01-01")  # Convert numeric date to Date
     ibp_hover <- as.numeric(input$hover_1$y) / 100  # Convert IBP back to original scale
     
     paste0("Distrito: ", input$distrito_seleccionado,
-      "\nPeríodo: ", format(periodo_hover, "%b %Y"),  # Format date as "MMM YYYY"
-      "\nIBP: ", scales::percent(ibp_hover, accuracy = 0.01)  # Format IBP as percentage
+           "\nPeríodo: ", format(periodo_hover, "%b %Y"),  # Format date as "MMM YYYY"
+           "\nIBP: ", scales::percent(ibp_hover, accuracy = 0.01)  # Format IBP as percentage
     )
   })
   
@@ -349,19 +364,18 @@ server <- function(input, output, session) {
   
   
   
-  
 }
 # Create the Shiny app object --------------------------------------------------
 
 shinyApp(ui = ui, server = server)
 
-# Tengo un plot, y tengo una primera tabla
 
 #Pasos a seguir
 # Revisar botones tabla. Ordenan mal (fecha), o tiran error (CBA)
 # 1: Cambiar la tabla por una que me permita ver todos los meses
-# 2: Permitir métricas opcionales (En tabla y gráfico)
-# Permitir elegir entre Excel o CSV o PDF
+# 2. Permitir elegir entre Excel o CSV o PDF
 # 4: Añadir comparación con otra provincia
-# 5: Añadir mapa
+# 5. Cabmiar fecha por un slider?
+# 6. Cambiar color de IBP por algo más escalar
+# 7: Añadir mapa?
 
